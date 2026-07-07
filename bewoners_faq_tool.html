@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B'Mine — Bewoners Infobalie</title>
+<style>
+  :root{
+    --bg: #EDEAE2;
+    --panel: #FFFFFF;
+    --panel-edge: #DAD5C8;
+    --ink: #21252B;
+    --ink-soft: #5B5F66;
+    --brass: #A8763A;
+    --brass-dim: #C9A579;
+    --petrol: #2C4A52;
+    --screen-bg: #171B1E;
+    --screen-fg: #E7C889;
+    --ok: #3E6B4F;
+    --warn: #A8763A;
+    --bad: #A14B3F;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+    min-height:100vh;
+    padding:32px 16px 64px;
+  }
+  @font-face{ /* fallback stack only, no external fetch needed */ }
+  .wrap{ max-width:760px; margin:0 auto; }
+
+  .directory-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom:2px solid var(--ink); padding-bottom:10px; margin-bottom:22px;
+  }
+  .directory-head h1{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:20px; letter-spacing:0.5px; margin:0; font-weight:600;
+  }
+  .directory-head .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; color:var(--ink-soft);
+  }
+
+  /* Intercom display */
+  .intercom{
+    background:var(--screen-bg);
+    border-radius:6px;
+    padding:18px 20px;
+    box-shadow: inset 0 0 0 1px #000, 0 6px 18px rgba(0,0,0,0.18);
+    margin-bottom:18px;
+  }
+  .intercom .led-row{
+    display:flex; gap:6px; margin-bottom:10px;
+  }
+  .led{ width:7px; height:7px; border-radius:50%; background:#3a4148; }
+  .led.on{ background:var(--brass); box-shadow:0 0 6px var(--brass); }
+  .screen-text{
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--screen-fg);
+    font-size:14px;
+    min-height:22px;
+    line-height:1.5;
+    letter-spacing:0.3px;
+  }
+  .screen-text .cursor{
+    display:inline-block; width:8px; height:14px; background:var(--screen-fg);
+    animation:blink 1s steps(1) infinite; vertical-align:middle; margin-left:2px;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .search-row{ position:relative; margin-bottom:18px; }
+  input#q{
+    width:100%;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:16px;
+    padding:14px 16px;
+    border:2px solid var(--ink);
+    border-radius:4px;
+    background:var(--panel);
+    color:var(--ink);
+    outline:none;
+  }
+  input#q:focus{ border-color:var(--brass); }
+  input#q::placeholder{ color:#9A9A93; }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:26px; }
+  .chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    padding:6px 10px;
+    border:1px solid var(--panel-edge);
+    border-radius:20px;
+    background:var(--panel);
+    color:var(--ink-soft);
+    cursor:pointer;
+    user-select:none;
+  }
+  .chip:hover{ border-color:var(--brass); color:var(--ink); }
+  .chip.active{ background:var(--petrol); border-color:var(--petrol); color:#fff; }
+
+  .results{ display:flex; flex-direction:column; gap:12px; }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--panel-edge);
+    border-left:4px solid var(--petrol);
+    border-radius:4px;
+    padding:16px 18px;
+  }
+  .card.status-bad{ border-left-color:var(--bad); }
+  .card.status-warn{ border-left-color:var(--warn); }
+  .card-cat{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color:var(--brass);
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    margin-bottom:4px;
+  }
+  .card-q{
+    font-size:16px;
+    font-weight:600;
+    margin:0 0 10px 0;
+  }
+  .card-instr{
+    font-size:14.5px;
+    line-height:1.55;
+    margin:0;
+  }
+  .card-instr ol{ margin:6px 0 0 0; padding-left:20px; }
+  .card-instr li{ margin-bottom:4px; }
+  .status-badge{
+    display:inline-block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    padding:3px 8px;
+    border-radius:3px;
+    margin-top:10px;
+    font-weight:600;
+    letter-spacing:0.3px;
+  }
+  .status-bad .status-badge{ background:#F4E4E0; color:var(--bad); }
+  .status-warn .status-badge{ background:#F3E9DC; color:var(--warn); }
+  .status-ok .status-badge{ background:#E3EDE6; color:var(--ok); }
+
+  .empty{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--ink-soft);
+    padding:20px 4px;
+  }
+  .footer-note{
+    margin-top:36px; font-size:11.5px; color:var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace; line-height:1.6;
+    border-top:1px solid var(--panel-edge); padding-top:14px;
+  }
+  .mvgm-box{
+    margin-top:22px;
+    background:var(--panel);
+    border:1px solid var(--panel-edge);
+    border-left:4px solid var(--brass);
+    border-radius:4px;
+    padding:16px 18px;
+  }
+  .mvgm-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:0.6px;
+    color:var(--brass); text-transform:uppercase;
+    margin-bottom:10px; font-weight:600;
+  }
+  .mvgm-table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  .mvgm-table td{ padding:6px 4px; border-bottom:1px solid var(--panel-edge); vertical-align:top; }
+  .mvgm-table tr:last-child td{ border-bottom:none; }
+  .mvgm-table td:first-child{ color:var(--ink-soft); width:46%; }
+  .mvgm-table td:last-child{ font-family:'IBM Plex Mono', monospace; font-weight:600; }
+  .mvgm-flag{
+    display:block; font-family:'IBM Plex Sans', sans-serif; font-weight:400;
+    font-size:11px; color:var(--warn); margin-top:3px;
+  }
+  .mvgm-note{
+    margin-top:12px; font-size:11px; color:var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace; line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="directory-head">
+    <h1>B'MINE · BEWONERS INFOBALIE</h1>
+    <div class="tag">17 categorieën</div>
+  </div>
+
+  <div class="intercom">
+    <div class="led-row" id="ledRow"></div>
+    <div class="screen-text" id="screenText">TYP EEN VRAAG OF KIES EEN CATEGORIE<span class="cursor"></span></div>
+  </div>
+
+  <div class="search-row">
+    <input id="q" type="text" placeholder="bv. 'lift doet het niet' of 'camera beelden'" autocomplete="off">
+  </div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="results" id="results"></div>
+
+  <div class="footer-note">
+    STATUS-CODES: <b>BEVESTIGD</b> = herhaald in de chat · <b>ONBEVESTIGD/VERMOEDEN</b> = niet officieel bevestigd · <b>TEGENSTRIJDIG</b> = tegenstrijdige info gevonden · <b>ONOPGELOST</b> = geen antwoord gevonden.<br>
+    Instructies = bewonersconsensus, geen officieel geverifieerd MVGM/VvE-beleid.
+  </div>
+
+  <div class="mvgm-box">
+    <div class="mvgm-title">MVGM — CONTACTGEGEVENS</div>
+    <table class="mvgm-table">
+      <tr><td>Algemeen storingsnummer</td><td>088 432 4100</td></tr>
+      <tr><td>Nathalie Verduyn Lunel — Client Manager</td><td>+31 (0)88 432 4151</td></tr>
+      <tr><td>Klantcontactcenter Wonen (reparatieticket)</td><td>kcc.wonen@mvgm.nl</td></tr>
+      <tr><td>Support Wonen Amsterdam</td><td>supportwonen.amsterdam@mvgm.nl</td></tr>
+      <tr><td>Huurdersportaal</td><td>mijnhuurwoning.mvgm.nl/contact</td></tr>
+    </table>
+    <div class="mvgm-note">Bereikbaarheid: <b>ONBEVESTIGD/HERHAALD GEMELD</b> — slecht bereikbaar tussen 12:00–13:30. Niet-MVGM maar in dezelfde context genoemd: Essent storingsnummer warmte 088 851 1241.</div>
+  </div>
+
+</div>
+
+<script>
+const DATA = [
+  // 1. Toegang
+  {cat:"Toegang", q:"Kenteken of pasje werkt niet bij de garage-inrit", kw:["garage","inrit","kenteken","pasje","scan","auto komt niet binnen"],
+   instr:["Rijd verder naar rechts op de rijbaan.","Rijd opnieuw in."],
+   status:"warn", statusText:"WERKT NIET ALTIJD — ONBEVESTIGD"},
+  {cat:"Toegang", q:"Garagedeur of toegangsdeur gaat niet open", kw:["garagedeur","toegangsdeur","deur","open","vastzitten"],
+   instr:["Vraag bij spoed een buurtgenoot je fysiek binnen te laten.","Meld het probleem bij MVGM voor structurele reparatie."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Toegang", q:"Sluitmechanisme van een deur (fietsenstalling/toegangsdeur) sluit niet goed", kw:["fietsenstalling","sluitmechanisme","deur sluit niet","magneet","sensor"],
+   instr:["Meld dit bij MVGM.","Reparatie verloopt via firma Kozijnfit."],
+   status:"warn", statusText:"REPARATIETERMIJN LANG — BEVESTIGD"},
+  {cat:"Toegang", q:"Ik ben buitengesloten, is er een loper voor de appartementen", kw:["buitengesloten","loper","slotenmaker","sleutel kwijt"],
+   instr:["Geen loper aanwezig — ook MVGM heeft die niet.","Bel een slotenmaker (voorbeeldkosten: ±€80).","Leg voortaan een reservesleutel bij een buur of bekende neer."],
+   status:"ok", statusText:"BEVESTIGD"},
+
+  // 2. Beheer
+  {cat:"Beheer / MVGM", q:"Bij wie meld ik een gebouwstoring", kw:["mvgm","melden","storing","beheer"],
+   instr:["Meld het bij MVGM (externe beheerder)."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Beheer / MVGM", q:"MVGM reageert niet of is niet bereikbaar", kw:["mvgm onbereikbaar","telefoon","niet bereikbaar","pauze"],
+   instr:["Vermijd bellen tussen 12:00–13:30.","Probeer later opnieuw of meld het in de bewonersgroep."],
+   status:"warn", statusText:"HERHAALD GEMELD — GEEN OFFICIËLE BEVESTIGING"},
+  {cat:"Beheer / MVGM", q:"Wie voert onderhoud of reparaties uit namens MVGM", kw:["onderhoudsbedrijf","groot en visser","kozijnfit","reparatie firma"],
+   instr:["Voor algemeen onderhoud (o.a. schuifpuien): firma De Groot & Visser.","Voor sluitmechanismen van deuren: firma Kozijnfit."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Beheer / MVGM", q:"MVGM reageert traag, wie kan lokaal helpen", kw:["lokaal aanspreekpunt","bas appeldoorn","tussenpersoon"],
+   instr:["Neem contact op met een actieve bewoner die informeel als aanspreekpunt fungeert richting MVGM."],
+   status:"warn", statusText:"INFORMELE AFSPRAAK — GEEN OFFICIËLE ROL"},
+
+  // 3. Noodgevallen
+  {cat:"Noodgevallen", q:"Spoedeisend probleem, bijvoorbeeld kapotte schuifpui of geen stroom", kw:["spoed","calamiteiten","noodnummer","spoedreparatie","stroom uitval"],
+   instr:["Bel MVGM.","Kies optie 2 ('spoed en calamiteiten')."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Noodgevallen", q:"MVGM-telefoonnummer is onbereikbaar tijdens een noodgeval", kw:["mvgm onbereikbaar noodgeval","geen contact","spoed geen reactie"],
+   instr:["Meld het probleem direct in de bewonersgroep.","Bel als alternatief rechtstreeks het onderhoudsbedrijf."],
+   status:"bad", statusText:"ONOPGELOST — GEEN VASTE OPLOSSING GEVONDEN"},
+
+  // 4. Pakketten
+  {cat:"Pakketten / Post", q:"Pakket bezorgd voor een ander huisnummer", kw:["pakket","verkeerd huisnummer","bezorgd","van wie"],
+   instr:["Maak een foto van het pakket + huisnummer.","Post de foto in de bewonersgroep."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Pakketten / Post", q:"Pakket ligt al dagen bij de deur", kw:["pakket blijft liggen","niet opgehaald"],
+   instr:["Neem het pakket preventief binnen.","Meld dit in de groep zodat de eigenaar het weet."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Pakketten / Post", q:"Postbode kan niet bezorgen bij de brievenbus", kw:["postbode","brievenbus","tag","post bezorgen"],
+   instr:["Geen bevestigde oplossing gevonden."],
+   status:"bad", statusText:"ONOPGELOST"},
+
+  // 5. Afval
+  {cat:"Afval / Grofvuil", q:"Grofvuil wordt niet (meer) opgehaald", kw:["grofvuil","niet opgehaald","gemeente klacht"],
+   instr:["Dien een klacht in bij de gemeente.","Deel je melding in de groep zodat anderen kunnen aansluiten."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Afval / Grofvuil", q:"Kan ik spullen bij het grofvuil zetten", kw:["grofvuil zetten","meubel weg","spullen kwijt"],
+   instr:["Bied het item eerst gratis aan in de groep.","Zet het pas bij het grofvuil als niemand interesse toont."],
+   status:"ok", statusText:"BEVESTIGD"},
+
+  // 6. Overlast
+  {cat:"Overlast / Veiligheid", q:"Kan de politie iets doen aan overlast", kw:["overlast","politie bellen","geluidsoverlast"],
+   instr:["Bel de politie via de niet-spoedlijn (0900-8844)."],
+   status:"warn", statusText:"WISSELEND RESULTAAT GERAPPORTEERD"},
+  {cat:"Overlast / Veiligheid", q:"Herrie of feestjes vanuit gedeelde ruimtes (bv. tuin)", kw:["feest","herrie","gedeelde ruimte","tuin overlast"],
+   instr:["Ga na of het een privéfeest of officieel evenement betreft.","Spreek de organisator of de verhuurder van de ruimte aan."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Overlast / Veiligheid", q:"Vreemde personen gesignaleerd in lift of gebouw", kw:["vreemde personen","onbekenden","veiligheid","indringer"],
+   instr:["Meld dit direct in de groep met verdieping en tijdstip.","Bel de politie bij een verdachte situatie."],
+   status:"warn", statusText:"CAMERADEKKING NIET BEVESTIGD"},
+
+  // 17. Camerabeelden
+  {cat:"Camerabeelden", q:"Kan ik camerabeelden opvragen, bijvoorbeeld bij diefstal", kw:["camera","camerabeelden","opvragen","diefstal","gestolen"],
+   instr:["Doe eerst aangifte bij de politie."],
+   status:"bad", statusText:"TEGENSTRIJDIG — MVGM: beelden bekijkbaar ná aangifte. Bewoner (Bas Appeldoorn): beelden mogen i.v.m. privacy alleen door de politie zelf bekeken worden. Een latere, vergelijkbare vraag (vermiste fiets) bleef onbeantwoord."},
+
+  // 7. Fietsenstalling
+  {cat:"Fietsenstalling", q:"Deur van de fietsenstalling sluit niet goed", kw:["fietsenstalling deur","sluit niet"],
+   instr:["Meld dit bij MVGM."],
+   status:"warn", statusText:"TERUGKEREND — GEEN PERMANENTE FIX BEVESTIGD"},
+  {cat:"Fietsenstalling", q:"Slot van de fietsenstalling is vernield", kw:["slot vernield","fietsenstalling kapot"],
+   instr:["Meld dit in de groep.","Meld dit ook bij MVGM."],
+   status:"ok", statusText:"BEVESTIGD"},
+
+  // 8. Intercom
+  {cat:"Intercom / Bezoek", q:"Bezoek of pakket moet binnengelaten worden", kw:["intercom","bezoek binnenlaten","deur openen voor bezoek"],
+   instr:["Post in de groep: tijdstip + huisnummer.","Wacht op reactie van een buur die thuis is."],
+   status:"ok", statusText:"BEVESTIGD"},
+
+  // 9. Verwarming
+  {cat:"Verwarming", q:"Thermostaat geeft verkeerde temperatuur aan", kw:["thermostaat","verkeerde temperatuur","vloerverwarming te heet","te koud"],
+   instr:["Zet tijdelijk 2 ruimtes op 1 thermostaat als noodoplossing.","Meld het defect bij MVGM voor vervanging."],
+   status:"warn", statusText:"BEKEND DEFECT — UITGEFASEERD THERMOSTAATTYPE"},
+  {cat:"Verwarming", q:"Vloerverwarming ongelijk verdeeld of knoppen onduidelijk", kw:["vloerverwarming zones","knoppen","welke knop"],
+   instr:["Vraag in de groep na bij buren met dezelfde plattegrond of zijde van het gebouw."],
+   status:"warn", statusText:"GEEN CENTRAAL ANTWOORD — ONBEVESTIGD"},
+
+  // 10. Ventilatie
+  {cat:"Ventilatie / Geur", q:"Rioollucht in de badkamer na regen", kw:["riool","stank","geur badkamer","rioollucht"],
+   instr:["Meld dit in de groep."],
+   status:"warn", statusText:"DEELS VERHOLPEN NA RIOOLWERKZAAMHEDEN — ONBEVESTIGD"},
+  {cat:"Ventilatie / Geur", q:"Brandlucht via het ventilatiesysteem", kw:["brandlucht","rook geur","ventilatie stinkt"],
+   instr:["Zet de ventilatie tijdelijk uit als noodmaatregel.","Meld het in de groep (vermoedelijke bron: vuurkorf/haard bij een penthouse)."],
+   status:"warn", statusText:"VERMOEDEN, NIET BEVESTIGD"},
+  {cat:"Ventilatie / Geur", q:"Veel tocht uit de ventilatiefilters", kw:["tocht","ventilatiefilter","koude lucht filter"],
+   instr:["Zet de filters lager of vervang ze."],
+   status:"warn", statusText:"WATTENBOLLETJES ALS NOODGREEP GENOEMD — NIET OFFICIEEL TOEGESTAAN"},
+  {cat:"Ventilatie / Geur", q:"Mag ik de ventilatie helemaal uitzetten", kw:["ventilatie uitzetten","mechanische ventilatie uit"],
+   instr:["Zet de ventilatie niet structureel uit — nodig voor vochtafvoer in de badkamer."],
+   status:"warn", statusText:"AFGERADEN DOOR BEWONERS — GEEN OFFICIËLE BEVESTIGING"},
+
+  // 11. Afvoer
+  {cat:"Afvoer / Verstopping", q:"Afvoer in de keuken is verstopt (vaatwasser/wasbak)", kw:["afvoer verstopt","sifon","keuken verstopt"],
+   instr:["Maak eerst de sifon (zwanenhals) onder het aanrechtkastje los en schoon."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Afvoer / Verstopping", q:"Sifon schoonmaken lost de verstopping niet op", kw:["loodgieter","sifon werkt niet","nog steeds verstopt"],
+   instr:["Bel een loodgieter (via MVGM of zelf regelen)."],
+   status:"ok", statusText:"BEVESTIGD"},
+
+  // 12. Energie
+  {cat:"Energie / Essent", q:"Moeten we energie bij Essent afnemen", kw:["essent","energieleverancier","verplicht"],
+   instr:["Neem warmte (stadswarmte) verplicht af bij Essent.","Kies stroom vrij bij een andere leverancier."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Energie / Essent", q:"Moet ik gas kiezen in het Essent-portaal", kw:["gas","essent portaal","gasaansluiting"],
+   instr:["Kies geen gas — het gebouw heeft geen gasaansluiting, ook al toont het portaal die optie."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Energie / Essent", q:"Werkt het nieuwe Essent warmteportaal goed", kw:["warmteportaal","essent inloggen","verbruiksdata"],
+   instr:["Log in en controleer of verbruiksdata zichtbaar is."],
+   status:"warn", statusText:"WISSELENDE ERVARINGEN GERAPPORTEERD"},
+
+  // 13. Lift
+  {cat:"Lift", q:"Lift werkt niet of deur gaat niet open", kw:["lift kapot","lift storing","deur lift"],
+   instr:["Meld dit bij MVGM.","Gebruik ondertussen de andere lift of de trap."],
+   status:"ok", statusText:"BEVESTIGD"},
+
+  // 14. Ledenadministratie
+  {cat:"Community-app", q:"Hoe schrijf ik iemand uit of vervang ik iemand in de community-app", kw:["uitschrijven","community app","lid vervangen"],
+   instr:["Geen procedure gevonden in de chat."],
+   status:"bad", statusText:"ONOPGELOST"},
+
+  // 15. Overig
+  {cat:"Overig", q:"Klein defect, bijvoorbeeld een kapotte lamp of apparaat", kw:["kapotte lamp","klein defect","apparaat stuk"],
+   instr:["Check eerst of het al gemeld is in de groep.","Meld het anders zelf bij MVGM."],
+   status:"ok", statusText:"BEVESTIGD"},
+  {cat:"Overig", q:"Spullen terughalen uit de berging", kw:["berging","kelder","opslag sleutel"],
+   instr:["Vraag de sleutel na bij MVGM of de schoonmaakdienst als je zelf geen toegang hebt."],
+   status:"warn", statusText:"AFHANKELIJK VAN SLEUTELBEHEER — ONBEVESTIGD"},
+
+  // 16. Lenen
+  {cat:"Spullen lenen", q:"Iets lenen, bijvoorbeeld boor, statafel of stofzuiger", kw:["lenen","boor","statafel","stofzuiger","spullen lenen"],
+   instr:["Post het item + gewenste tijdsduur in de groep.","Spreek ophalen/teruggeven af met wie reageert."],
+   status:"ok", statusText:"BEVESTIGD PATROON"},
+  {cat:"Spullen lenen", q:"Iets gratis weggeven of verkopen", kw:["weggeven","gratis","verkopen","tweedehands"],
+   instr:["Post een foto + korte beschrijving + prijs (of 'gratis').","Vermeld een deadline, bv. 'als het vanavond niet weg is, gaat het bij het grofvuil'."],
+   status:"ok", statusText:"BEVESTIGD PATROON"},
+];
+
+const categories = [...new Set(DATA.map(d => d.cat))];
+let activeCat = null;
+
+function tokenize(s){
+  return s.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9\s]/g," ")
+    .split(/\s+/).filter(Boolean);
+}
+
+function searchableText(item){
+  return [item.cat, item.q, ...(item.kw||[]), ...(item.instr||[])].join(" ").toLowerCase();
+}
+
+function score(item, tokens){
+  const text = searchableText(item);
+  let s = 0;
+  tokens.forEach(t=>{
+    if(t.length < 2) return;
+    if(text.includes(t)) s += 1;
+  });
+  return s;
+}
+
+function renderChips(){
+  const el = document.getElementById("chips");
+  el.innerHTML = "";
+  categories.forEach(cat=>{
+    const chip = document.createElement("div");
+    chip.className = "chip" + (activeCat===cat ? " active":"");
+    chip.textContent = cat;
+    chip.onclick = ()=>{
+      activeCat = (activeCat===cat) ? null : cat;
+      document.getElementById("q").value = "";
+      renderChips();
+      renderResults();
+    };
+    el.appendChild(chip);
+  });
+}
+
+function statusClass(status){
+  return status === "bad" ? "status-bad" : status === "warn" ? "status-warn" : "status-ok";
+}
+
+function renderCard(item){
+  const div = document.createElement("div");
+  div.className = "card " + statusClass(item.status);
+  const instrHtml = item.instr.length > 1
+    ? "<ol>" + item.instr.map(i=>`<li>${i}</li>`).join("") + "</ol>"
+    : `<p style="margin:0">${item.instr[0]}</p>`;
+  div.innerHTML = `
+    <div class="card-cat">${item.cat}</div>
+    <p class="card-q">${item.q}</p>
+    <div class="card-instr">${instrHtml}</div>
+    <div class="status-badge">${item.statusText}</div>
+  `;
+  return div;
+}
+
+function updateScreen(query, matchCount){
+  const screen = document.getElementById("screenText");
+  const leds = document.getElementById("ledRow");
+  leds.innerHTML = "";
+  if(!query && !activeCat){
+    screen.innerHTML = "TYP EEN VRAAG OF KIES EEN CATEGORIE<span class='cursor'></span>";
+    for(let i=0;i<3;i++){ const l=document.createElement("div"); l.className="led"; leds.appendChild(l); }
+    return;
+  }
+  const label = activeCat ? activeCat.toUpperCase() : query.toUpperCase();
+  if(matchCount > 0){
+    screen.innerHTML = `${matchCount} RESULTA${matchCount===1?"AT":"TEN"} · "${label}"`;
+    for(let i=0;i<3;i++){ const l=document.createElement("div"); l.className="led on"; leds.appendChild(l); }
+  } else {
+    screen.innerHTML = `GEEN MATCH · "${label}"`;
+    for(let i=0;i<3;i++){ const l=document.createElement("div"); l.className="led"; leds.appendChild(l); }
+  }
+}
+
+function renderResults(){
+  const query = document.getElementById("q").value.trim();
+  const resultsEl = document.getElementById("results");
+  resultsEl.innerHTML = "";
+
+  let items = DATA;
+  if(activeCat){
+    items = items.filter(d => d.cat === activeCat);
+  }
+
+  if(query){
+    const tokens = tokenize(query);
+    items = items
+      .map(d => ({item:d, s:score(d, tokens)}))
+      .filter(x => x.s > 0)
+      .sort((a,b)=> b.s - a.s)
+      .slice(0,6)
+      .map(x=>x.item);
+  }
+
+  updateScreen(query, items.length);
+
+  if(items.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = query
+      ? "Geen directe match gevonden. Herformuleer de vraag, of neem contact op met MVGM."
+      : "Kies een categorie hierboven, of typ een vraag.";
+    resultsEl.appendChild(empty);
+    return;
+  }
+
+  items.forEach(item => resultsEl.appendChild(renderCard(item)));
+}
+
+document.getElementById("q").addEventListener("input", ()=>{
+  if(document.getElementById("q").value.trim()){ activeCat = null; renderChips(); }
+  renderResults();
+});
+
+renderChips();
+renderResults();
+</script>
+</body>
+</html>
