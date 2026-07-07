@@ -283,7 +283,7 @@
 
   <div class="directory-head">
     <h1>B'MINE · BEWONERS INFOBALIE</h1>
-    <div class="tag">17 categorieën</div>
+    <div class="tag" id="catCount"></div>
   </div>
 
   <div class="intercom">
@@ -452,11 +452,6 @@ const DATA = [
    instr:["Meld dit bij MVGM.","Gebruik ondertussen de andere lift of de trap."],
    status:"ok", statusText:"BEVESTIGD"},
 
-  // 14. Ledenadministratie
-  {cat:"Community-app", q:"Hoe schrijf ik iemand uit of vervang ik iemand in de community-app", kw:["uitschrijven","community app","lid vervangen"],
-   instr:["Geen procedure gevonden in de chat."],
-   status:"bad", statusText:"ONOPGELOST"},
-
   // 15. Overig
   {cat:"Overig", q:"Klein defect, bijvoorbeeld een kapotte lamp of apparaat", kw:["kapotte lamp","klein defect","apparaat stuk"],
    instr:["Check eerst of het al gemeld is in de groep.","Meld het anders zelf bij MVGM."],
@@ -594,6 +589,7 @@ document.getElementById("q").addEventListener("input", ()=>{
   renderResults();
 });
 
+document.getElementById("catCount").textContent = categories.length + " categorieën";
 renderChips();
 renderResults();
 </script>
