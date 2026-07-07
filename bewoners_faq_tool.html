@@ -112,7 +112,8 @@
   .wrap{ max-width:760px; margin:0 auto; }
 
   .directory-head{
-    display:flex; align-items:baseline; justify-content:space-between;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; flex-wrap:wrap;
     border-bottom:2px solid var(--ink);
     padding:12px 16px 10px; margin-bottom:22px;
     background:var(--panel-glass);
@@ -125,10 +126,30 @@
     font-size:20px; letter-spacing:0.5px; margin:0; font-weight:600;
     text-wrap:balance;
   }
+  .head-meta{ display:flex; align-items:center; gap:12px; }
   .directory-head .tag{
     font-family:'IBM Plex Mono', monospace;
     font-size:11px; color:var(--ink-soft);
   }
+  .lang-switch{
+    display:flex;
+    border:1px solid var(--panel-edge);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .lang-btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    padding:5px 9px;
+    background:var(--panel);
+    color:var(--ink-soft);
+    border:none;
+    cursor:pointer;
+    letter-spacing:0.5px;
+  }
+  .lang-btn:hover{ color:var(--ink); }
+  .lang-btn:focus-visible{ outline:2px solid var(--brass); outline-offset:-2px; }
+  .lang-btn.active{ background:var(--petrol); color:#fff; }
 
   /* Intercom display */
   .intercom{
@@ -282,32 +303,35 @@
 <div class="wrap">
 
   <div class="directory-head">
-    <h1>B'MINE · BEWONERS INFOBALIE</h1>
-    <div class="tag" id="catCount"></div>
+    <h1 id="pageTitle">B'MINE · BEWONERS INFOBALIE</h1>
+    <div class="head-meta">
+      <div class="tag" id="catCount"></div>
+      <div class="lang-switch" role="group" aria-label="Taal / Language">
+        <button type="button" class="lang-btn" id="langNl">NL</button>
+        <button type="button" class="lang-btn" id="langEn">EN</button>
+      </div>
+    </div>
   </div>
 
   <div class="intercom">
     <div class="led-row" id="ledRow"></div>
-    <div class="screen-text" id="screenText">TYP EEN VRAAG OF KIES EEN CATEGORIE<span class="cursor"></span></div>
+    <div class="screen-text" id="screenText"></div>
   </div>
 
   <div class="search-row">
-    <input id="q" type="text" placeholder="bv. 'lift doet het niet' of 'camera beelden'" autocomplete="off">
+    <input id="q" type="text" placeholder="" autocomplete="off">
   </div>
 
   <div class="chips" id="chips"></div>
 
   <div class="results" id="results"></div>
 
-  <div class="footer-note">
-    STATUS-CODES: <b>BEVESTIGD</b> = herhaald in de chat · <b>ONOPGELOST</b> = geen antwoord gevonden.<br>
-    Instructies = bewonersconsensus, geen officieel geverifieerd MVGM/VvE-beleid.
-  </div>
+  <div class="footer-note" id="footerNote"></div>
 
   <div class="mvgm-box">
-    <div class="mvgm-title">MVGM — CONTACTGEGEVENS</div>
+    <div class="mvgm-title" id="mvgmTitle">MVGM — CONTACTGEGEVENS</div>
     <div class="mvgm-table-wrap">
-    <table class="mvgm-table">
+    <table class="mvgm-table" id="mvgmTable">
       <tr><td>Algemeen storingsnummer</td><td>088 432 4100</td></tr>
       <tr><td>Nathalie Verduyn Lunel — Client Manager</td><td>+31 (0)88 432 4151</td></tr>
       <tr><td>Klantcontactcenter Wonen (reparatieticket)</td><td>kcc.wonen@mvgm.nl</td></tr>
@@ -315,172 +339,333 @@
       <tr><td>Huurdersportaal</td><td>mijnhuurwoning.mvgm.nl/contact</td></tr>
     </table>
     </div>
-    <div class="mvgm-note">Let op: MVGM is tussen 12:00–13:30 vaak slecht bereikbaar. Niet-MVGM maar in dezelfde context genoemd: Essent storingsnummer warmte 088 851 1241.</div>
+    <div class="mvgm-note" id="mvgmNote"></div>
   </div>
 
 </div>
 
 <script>
 const DATA = [
-  // 1. Toegang
-  {cat:"Toegang", q:"Kenteken of pasje werkt niet bij de garage-inrit", kw:["garage","inrit","kenteken","pasje","scan","auto komt niet binnen"],
+  // Toegang / Access
+  {cat:"Toegang", cat_en:"Access",
+   q:"Kenteken of pasje werkt niet bij de garage-inrit",
+   q_en:"Licence plate or entry pass not working at the garage entrance",
+   kw:["garage","inrit","kenteken","pasje","scan","auto komt niet binnen","licence plate","key card","entrance"],
    instr:["Rijd verder naar rechts op de rijbaan.","Rijd opnieuw in."],
+   instr_en:["Keep further to the right on the driveway.","Drive in again."],
    status:"warn", statusText:"WERKT NIET ALTIJD — ONBEVESTIGD"},
-  {cat:"Toegang", q:"Garagedeur of toegangsdeur gaat niet open", kw:["garagedeur","toegangsdeur","deur","open","vastzitten"],
+  {cat:"Toegang", cat_en:"Access",
+   q:"Garagedeur of toegangsdeur gaat niet open",
+   q_en:"Garage door or entrance door won't open",
+   kw:["garagedeur","toegangsdeur","deur","open","vastzitten","door","stuck"],
    instr:["Vraag bij spoed een buurtgenoot je fysiek binnen te laten.","Meld het probleem bij MVGM voor structurele reparatie."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Toegang", q:"Sluitmechanisme van een deur (fietsenstalling/toegangsdeur) sluit niet goed", kw:["fietsenstalling","sluitmechanisme","deur sluit niet","magneet","sensor"],
+   instr_en:["In urgent cases, ask a neighbour to let you in.","Report the problem to MVGM for a structural repair."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
+  {cat:"Toegang", cat_en:"Access",
+   q:"Sluitmechanisme van een deur (fietsenstalling/toegangsdeur) sluit niet goed",
+   q_en:"Door locking mechanism (bicycle storage/entrance) doesn't close properly",
+   kw:["fietsenstalling","sluitmechanisme","deur sluit niet","magneet","sensor","lock","latch"],
    instr:["Meld dit bij MVGM.","Reparatie verloopt via firma Kozijnfit."],
-   status:"warn", statusText:"REPARATIETERMIJN LANG — BEVESTIGD"},
-  {cat:"Toegang", q:"Ik ben buitengesloten, is er een loper voor de appartementen", kw:["buitengesloten","loper","slotenmaker","sleutel kwijt"],
+   instr_en:["Report it to MVGM.","Repairs are handled by the company Kozijnfit."],
+   status:"warn", statusText:"REPARATIETERMIJN LANG — BEVESTIGD", statusText_en:"LONG REPAIR TIME — CONFIRMED"},
+  {cat:"Toegang", cat_en:"Access",
+   q:"Ik ben buitengesloten, is er een loper voor de appartementen",
+   q_en:"I'm locked out, is there a master key for the apartments",
+   kw:["buitengesloten","loper","slotenmaker","sleutel kwijt","locked out","locksmith","master key"],
    instr:["Geen loper aanwezig — ook MVGM heeft die niet.","Bel een slotenmaker (voorbeeldkosten: ±€80).","Leg voortaan een reservesleutel bij een buur of bekende neer."],
-   status:"ok", statusText:"BEVESTIGD"},
+   instr_en:["There is no master key — MVGM doesn't have one either.","Call a locksmith (example cost: ±€80).","Keep a spare key with a neighbour or friend from now on."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
 
-  // 2. Beheer
-  {cat:"Beheer / MVGM", q:"Bij wie meld ik een gebouwstoring", kw:["mvgm","melden","storing","beheer"],
+  // Beheer / Management
+  {cat:"Beheer / MVGM", cat_en:"Management / MVGM",
+   q:"Bij wie meld ik een gebouwstoring",
+   q_en:"Who do I report a building issue to",
+   kw:["mvgm","melden","storing","beheer","report","issue","fault"],
    instr:["Meld het bij MVGM (externe beheerder)."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Beheer / MVGM", q:"MVGM reageert niet of is niet bereikbaar", kw:["mvgm onbereikbaar","telefoon","niet bereikbaar","pauze"],
+   instr_en:["Report it to MVGM (external property manager)."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
+  {cat:"Beheer / MVGM", cat_en:"Management / MVGM",
+   q:"MVGM reageert niet of is niet bereikbaar",
+   q_en:"MVGM doesn't respond or can't be reached",
+   kw:["mvgm onbereikbaar","telefoon","niet bereikbaar","pauze","unreachable","no response"],
    instr:["Vermijd bellen tussen 12:00–13:30.","Probeer later opnieuw of meld het in de bewonersgroep."],
+   instr_en:["Avoid calling between 12:00–13:30.","Try again later or post it in the residents' group."],
    status:"warn", statusText:"HERHAALD GEMELD — GEEN OFFICIËLE BEVESTIGING"},
-  {cat:"Beheer / MVGM", q:"Wie voert onderhoud of reparaties uit namens MVGM", kw:["onderhoudsbedrijf","groot en visser","kozijnfit","reparatie firma"],
+  {cat:"Beheer / MVGM", cat_en:"Management / MVGM",
+   q:"Wie voert onderhoud of reparaties uit namens MVGM",
+   q_en:"Who carries out maintenance or repairs on behalf of MVGM",
+   kw:["onderhoudsbedrijf","groot en visser","kozijnfit","reparatie firma","maintenance","contractor"],
    instr:["Voor algemeen onderhoud (o.a. schuifpuien): firma De Groot & Visser.","Voor sluitmechanismen van deuren: firma Kozijnfit."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Beheer / MVGM", q:"MVGM reageert traag, wie kan lokaal helpen", kw:["lokaal aanspreekpunt","bas appeldoorn","tussenpersoon"],
-   instr:["Neem contact op met een actieve bewoner die informeel als aanspreekpunt fungeert richting MVGM."],
-   status:"warn", statusText:"INFORMELE AFSPRAAK — GEEN OFFICIËLE ROL"},
+   instr_en:["General maintenance (incl. sliding doors): De Groot & Visser.","Door locking mechanisms: Kozijnfit."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
 
-  // 3. Noodgevallen
-  {cat:"Noodgevallen", q:"Spoedeisend probleem, bijvoorbeeld kapotte schuifpui of geen stroom", kw:["spoed","calamiteiten","noodnummer","spoedreparatie","stroom uitval"],
+  // Noodgevallen / Emergencies
+  {cat:"Noodgevallen", cat_en:"Emergencies",
+   q:"Spoedeisend probleem, bijvoorbeeld kapotte schuifpui of geen stroom",
+   q_en:"Urgent problem, e.g. broken sliding door or power failure",
+   kw:["spoed","calamiteiten","noodnummer","spoedreparatie","stroom uitval","emergency","urgent","power failure"],
    instr:["Bel MVGM.","Kies optie 2 ('spoed en calamiteiten')."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Noodgevallen", q:"MVGM-telefoonnummer is onbereikbaar tijdens een noodgeval", kw:["mvgm onbereikbaar noodgeval","geen contact","spoed geen reactie"],
+   instr_en:["Call MVGM.","Choose option 2 ('emergencies and calamities')."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
+  {cat:"Noodgevallen", cat_en:"Emergencies",
+   q:"MVGM-telefoonnummer is onbereikbaar tijdens een noodgeval",
+   q_en:"MVGM phone line unreachable during an emergency",
+   kw:["mvgm onbereikbaar noodgeval","geen contact","spoed geen reactie","emergency no answer"],
    instr:["Meld het probleem direct in de bewonersgroep.","Bel als alternatief rechtstreeks het onderhoudsbedrijf."],
-   status:"bad", statusText:"ONOPGELOST — GEEN VASTE OPLOSSING GEVONDEN"},
+   instr_en:["Report the problem in the residents' group right away.","Alternatively, call the maintenance company directly."],
+   status:"bad", statusText:"ONOPGELOST — GEEN VASTE OPLOSSING GEVONDEN", statusText_en:"UNRESOLVED — NO ESTABLISHED SOLUTION"},
 
-  // 4. Pakketten
-  {cat:"Pakketten / Post", q:"Pakket bezorgd voor een ander huisnummer", kw:["pakket","verkeerd huisnummer","bezorgd","van wie"],
+  // Pakketten / Packages
+  {cat:"Pakketten / Post", cat_en:"Packages / Mail",
+   q:"Pakket bezorgd voor een ander huisnummer",
+   q_en:"Package delivered for a different house number",
+   kw:["pakket","verkeerd huisnummer","bezorgd","van wie","package","parcel","wrong address"],
    instr:["Maak een foto van het pakket + huisnummer.","Post de foto in de bewonersgroep."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Pakketten / Post", q:"Pakket ligt al dagen bij de deur", kw:["pakket blijft liggen","niet opgehaald"],
+   instr_en:["Take a photo of the package + house number.","Post the photo in the residents' group."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
+  {cat:"Pakketten / Post", cat_en:"Packages / Mail",
+   q:"Pakket ligt al dagen bij de deur",
+   q_en:"Package has been sitting at the door for days",
+   kw:["pakket blijft liggen","niet opgehaald","package left","not collected"],
    instr:["Neem het pakket preventief binnen.","Meld dit in de groep zodat de eigenaar het weet."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Pakketten / Post", q:"Postbode kan niet bezorgen bij de brievenbus", kw:["postbode","brievenbus","tag","post bezorgen"],
-   instr:["Geen bevestigde oplossing gevonden."],
-   status:"bad", statusText:"ONOPGELOST"},
+   instr_en:["Take the package inside as a precaution.","Mention it in the group so the owner knows."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
 
-  // 5. Afval
-  {cat:"Afval / Grofvuil", q:"Grofvuil wordt niet (meer) opgehaald", kw:["grofvuil","niet opgehaald","gemeente klacht"],
+  // Afval / Waste
+  {cat:"Afval / Grofvuil", cat_en:"Waste / Bulky waste",
+   q:"Grofvuil wordt niet (meer) opgehaald",
+   q_en:"Bulky waste is not being collected (anymore)",
+   kw:["grofvuil","niet opgehaald","gemeente klacht","bulky waste","collection","municipality"],
    instr:["Dien een klacht in bij de gemeente.","Deel je melding in de groep zodat anderen kunnen aansluiten."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Afval / Grofvuil", q:"Kan ik spullen bij het grofvuil zetten", kw:["grofvuil zetten","meubel weg","spullen kwijt"],
-   instr:["Bied het item eerst gratis aan in de groep.","Zet het pas bij het grofvuil als niemand interesse toont."],
-   status:"ok", statusText:"BEVESTIGD"},
+   instr_en:["File a complaint with the municipality.","Share your report in the group so others can join in."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
 
-  // 6. Overlast
-  {cat:"Overlast / Veiligheid", q:"Kan de politie iets doen aan overlast", kw:["overlast","politie bellen","geluidsoverlast"],
+  // Overlast / Nuisance
+  {cat:"Overlast / Veiligheid", cat_en:"Nuisance / Safety",
+   q:"Kan de politie iets doen aan overlast",
+   q_en:"Can the police do anything about nuisance",
+   kw:["overlast","politie bellen","geluidsoverlast","police","noise","nuisance"],
    instr:["Bel de politie via de niet-spoedlijn (0900-8844)."],
-   status:"warn", statusText:"WISSELEND RESULTAAT GERAPPORTEERD"},
-  {cat:"Overlast / Veiligheid", q:"Herrie of feestjes vanuit gedeelde ruimtes (bv. tuin)", kw:["feest","herrie","gedeelde ruimte","tuin overlast"],
+   instr_en:["Call the police non-emergency line (0900-8844)."],
+   status:"warn", statusText:"WISSELEND RESULTAAT GERAPPORTEERD", statusText_en:"MIXED RESULTS REPORTED"},
+  {cat:"Overlast / Veiligheid", cat_en:"Nuisance / Safety",
+   q:"Herrie of feestjes vanuit gedeelde ruimtes (bv. tuin)",
+   q_en:"Noise or parties from shared spaces (e.g. garden)",
+   kw:["feest","herrie","gedeelde ruimte","tuin overlast","party","noise","garden"],
    instr:["Ga na of het een privéfeest of officieel evenement betreft.","Spreek de organisator of de verhuurder van de ruimte aan."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Overlast / Veiligheid", q:"Vreemde personen gesignaleerd in lift of gebouw", kw:["vreemde personen","onbekenden","veiligheid","indringer"],
+   instr_en:["Check whether it's a private party or an official event.","Address the organiser or the space's landlord."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
+  {cat:"Overlast / Veiligheid", cat_en:"Nuisance / Safety",
+   q:"Vreemde personen gesignaleerd in lift of gebouw",
+   q_en:"Strangers spotted in the elevator or building",
+   kw:["vreemde personen","onbekenden","veiligheid","indringer","strangers","intruder","safety"],
    instr:["Meld dit direct in de groep met verdieping en tijdstip.","Bel de politie bij een verdachte situatie."],
+   instr_en:["Report it in the group right away with floor and time.","Call the police if the situation seems suspicious."],
    status:"warn", statusText:"CAMERADEKKING NIET BEVESTIGD"},
 
-  // 17. Camerabeelden
-  {cat:"Camerabeelden", q:"Kan ik camerabeelden opvragen, bijvoorbeeld bij diefstal", kw:["camera","camerabeelden","opvragen","diefstal","gestolen"],
-   instr:["Doe eerst aangifte bij de politie."],
-   status:"bad", statusText:"TEGENSTRIJDIG — MVGM: beelden bekijkbaar ná aangifte. Bewoner (Bas Appeldoorn): beelden mogen i.v.m. privacy alleen door de politie zelf bekeken worden. Een latere, vergelijkbare vraag (vermiste fiets) bleef onbeantwoord."},
-
-  // 7. Fietsenstalling
-  {cat:"Fietsenstalling", q:"Deur van de fietsenstalling sluit niet goed", kw:["fietsenstalling deur","sluit niet"],
+  // Fietsenstalling / Bicycle storage
+  {cat:"Fietsenstalling", cat_en:"Bicycle storage",
+   q:"Deur van de fietsenstalling sluit niet goed",
+   q_en:"Bicycle storage door doesn't close properly",
+   kw:["fietsenstalling deur","sluit niet","bicycle storage","bike room","door"],
    instr:["Meld dit bij MVGM."],
+   instr_en:["Report it to MVGM."],
    status:"warn", statusText:"TERUGKEREND — GEEN PERMANENTE FIX BEVESTIGD"},
-  {cat:"Fietsenstalling", q:"Slot van de fietsenstalling is vernield", kw:["slot vernield","fietsenstalling kapot"],
+  {cat:"Fietsenstalling", cat_en:"Bicycle storage",
+   q:"Slot van de fietsenstalling is vernield",
+   q_en:"Bicycle storage lock has been vandalised",
+   kw:["slot vernield","fietsenstalling kapot","lock broken","vandalised"],
    instr:["Meld dit in de groep.","Meld dit ook bij MVGM."],
-   status:"ok", statusText:"BEVESTIGD"},
+   instr_en:["Report it in the group.","Also report it to MVGM."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
 
-  // 8. Intercom
-  {cat:"Intercom / Bezoek", q:"Bezoek of pakket moet binnengelaten worden", kw:["intercom","bezoek binnenlaten","deur openen voor bezoek"],
+  // Intercom / Visitors
+  {cat:"Intercom / Bezoek", cat_en:"Intercom / Visitors",
+   q:"Bezoek of pakket moet binnengelaten worden",
+   q_en:"A visitor or package needs to be let in",
+   kw:["intercom","bezoek binnenlaten","deur openen voor bezoek","visitor","let in","buzz in"],
    instr:["Post in de groep: tijdstip + huisnummer.","Wacht op reactie van een buur die thuis is."],
-   status:"ok", statusText:"BEVESTIGD"},
+   instr_en:["Post in the group: time + house number.","Wait for a neighbour who's home to respond."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
 
-  // 9. Verwarming
-  {cat:"Verwarming", q:"Thermostaat geeft verkeerde temperatuur aan", kw:["thermostaat","verkeerde temperatuur","vloerverwarming te heet","te koud"],
+  // Verwarming / Heating
+  {cat:"Verwarming", cat_en:"Heating",
+   q:"Thermostaat geeft verkeerde temperatuur aan",
+   q_en:"Thermostat shows the wrong temperature",
+   kw:["thermostaat","verkeerde temperatuur","vloerverwarming te heet","te koud","thermostat","temperature","too hot","too cold"],
    instr:["Zet tijdelijk 2 ruimtes op 1 thermostaat als noodoplossing.","Meld het defect bij MVGM voor vervanging."],
-   status:"warn", statusText:"BEKEND DEFECT — UITGEFASEERD THERMOSTAATTYPE"},
-  {cat:"Verwarming", q:"Vloerverwarming ongelijk verdeeld of knoppen onduidelijk", kw:["vloerverwarming zones","knoppen","welke knop"],
+   instr_en:["Temporarily run 2 rooms on 1 thermostat as a workaround.","Report the defect to MVGM for a replacement."],
+   status:"warn", statusText:"BEKEND DEFECT — UITGEFASEERD THERMOSTAATTYPE", statusText_en:"KNOWN DEFECT — DISCONTINUED THERMOSTAT MODEL"},
+  {cat:"Verwarming", cat_en:"Heating",
+   q:"Vloerverwarming ongelijk verdeeld of knoppen onduidelijk",
+   q_en:"Floor heating unevenly distributed or controls unclear",
+   kw:["vloerverwarming zones","knoppen","welke knop","floor heating","underfloor","controls"],
    instr:["Vraag in de groep na bij buren met dezelfde plattegrond of zijde van het gebouw."],
+   instr_en:["Ask neighbours with the same floor plan or side of the building in the group."],
    status:"warn", statusText:"GEEN CENTRAAL ANTWOORD — ONBEVESTIGD"},
 
-  // 10. Ventilatie
-  {cat:"Ventilatie / Geur", q:"Rioollucht in de badkamer na regen", kw:["riool","stank","geur badkamer","rioollucht"],
-   instr:["Meld dit in de groep."],
-   status:"warn", statusText:"DEELS VERHOLPEN NA RIOOLWERKZAAMHEDEN — ONBEVESTIGD"},
-  {cat:"Ventilatie / Geur", q:"Brandlucht via het ventilatiesysteem", kw:["brandlucht","rook geur","ventilatie stinkt"],
+  // Ventilatie / Ventilation
+  {cat:"Ventilatie / Geur", cat_en:"Ventilation / Odour",
+   q:"Brandlucht via het ventilatiesysteem",
+   q_en:"Burning smell coming through the ventilation system",
+   kw:["brandlucht","rook geur","ventilatie stinkt","burning smell","smoke","ventilation"],
    instr:["Zet de ventilatie tijdelijk uit als noodmaatregel.","Meld het in de groep (vermoedelijke bron: vuurkorf/haard bij een penthouse)."],
+   instr_en:["Turn the ventilation off temporarily as an emergency measure.","Report it in the group (suspected source: fire pit/fireplace at a penthouse)."],
    status:"warn", statusText:"VERMOEDEN, NIET BEVESTIGD"},
-  {cat:"Ventilatie / Geur", q:"Veel tocht uit de ventilatiefilters", kw:["tocht","ventilatiefilter","koude lucht filter"],
+  {cat:"Ventilatie / Geur", cat_en:"Ventilation / Odour",
+   q:"Veel tocht uit de ventilatiefilters",
+   q_en:"Strong draught from the ventilation filters",
+   kw:["tocht","ventilatiefilter","koude lucht filter","draught","draft","filter"],
    instr:["Zet de filters lager of vervang ze."],
-   status:"warn", statusText:"WATTENBOLLETJES ALS NOODGREEP GENOEMD — NIET OFFICIEEL TOEGESTAAN"},
-  {cat:"Ventilatie / Geur", q:"Mag ik de ventilatie helemaal uitzetten", kw:["ventilatie uitzetten","mechanische ventilatie uit"],
+   instr_en:["Set the filters to a lower position or replace them."],
+   status:"warn", statusText:"WATTENBOLLETJES ALS NOODGREEP GENOEMD — NIET OFFICIEEL TOEGESTAAN", statusText_en:"COTTON WOOL MENTIONED AS A STOPGAP — NOT OFFICIALLY PERMITTED"},
+  {cat:"Ventilatie / Geur", cat_en:"Ventilation / Odour",
+   q:"Mag ik de ventilatie helemaal uitzetten",
+   q_en:"Can I switch the ventilation off completely",
+   kw:["ventilatie uitzetten","mechanische ventilatie uit","switch off ventilation","turn off"],
    instr:["Zet de ventilatie niet structureel uit — nodig voor vochtafvoer in de badkamer."],
+   instr_en:["Don't switch the ventilation off permanently — it's needed to remove moisture from the bathroom."],
    status:"warn", statusText:"AFGERADEN DOOR BEWONERS — GEEN OFFICIËLE BEVESTIGING"},
 
-  // 11. Afvoer
-  {cat:"Afvoer / Verstopping", q:"Afvoer in de keuken is verstopt (vaatwasser/wasbak)", kw:["afvoer verstopt","sifon","keuken verstopt"],
+  // Afvoer / Drains
+  {cat:"Afvoer / Verstopping", cat_en:"Drains / Blockage",
+   q:"Afvoer in de keuken is verstopt (vaatwasser/wasbak)",
+   q_en:"Kitchen drain is blocked (dishwasher/sink)",
+   kw:["afvoer verstopt","sifon","keuken verstopt","drain blocked","clogged","sink"],
    instr:["Maak eerst de sifon (zwanenhals) onder het aanrechtkastje los en schoon."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Afvoer / Verstopping", q:"Sifon schoonmaken lost de verstopping niet op", kw:["loodgieter","sifon werkt niet","nog steeds verstopt"],
+   instr_en:["First detach and clean the trap (U-bend) under the sink cabinet."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
+  {cat:"Afvoer / Verstopping", cat_en:"Drains / Blockage",
+   q:"Sifon schoonmaken lost de verstopping niet op",
+   q_en:"Cleaning the trap doesn't fix the blockage",
+   kw:["loodgieter","sifon werkt niet","nog steeds verstopt","plumber","still blocked"],
    instr:["Bel een loodgieter (via MVGM of zelf regelen)."],
-   status:"ok", statusText:"BEVESTIGD"},
+   instr_en:["Call a plumber (via MVGM or arrange one yourself)."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
 
-  // 12. Energie
-  {cat:"Energie / Essent", q:"Moeten we energie bij Essent afnemen", kw:["essent","energieleverancier","verplicht"],
+  // Energie / Energy
+  {cat:"Energie / Essent", cat_en:"Energy / Essent",
+   q:"Moeten we energie bij Essent afnemen",
+   q_en:"Do we have to get our energy from Essent",
+   kw:["essent","energieleverancier","verplicht","energy supplier","mandatory"],
    instr:["Neem warmte (stadswarmte) verplicht af bij Essent.","Kies stroom vrij bij een andere leverancier."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Energie / Essent", q:"Moet ik gas kiezen in het Essent-portaal", kw:["gas","essent portaal","gasaansluiting"],
+   instr_en:["Heat (district heating) must be purchased from Essent.","Electricity can be freely chosen from any supplier."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
+  {cat:"Energie / Essent", cat_en:"Energy / Essent",
+   q:"Moet ik gas kiezen in het Essent-portaal",
+   q_en:"Should I select gas in the Essent portal",
+   kw:["gas","essent portaal","gasaansluiting","gas connection","portal"],
    instr:["Kies geen gas — het gebouw heeft geen gasaansluiting, ook al toont het portaal die optie."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Energie / Essent", q:"Werkt het nieuwe Essent warmteportaal goed", kw:["warmteportaal","essent inloggen","verbruiksdata"],
+   instr_en:["Don't select gas — the building has no gas connection, even though the portal shows the option."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
+  {cat:"Energie / Essent", cat_en:"Energy / Essent",
+   q:"Werkt het nieuwe Essent warmteportaal goed",
+   q_en:"Does the new Essent heat portal work properly",
+   kw:["warmteportaal","essent inloggen","verbruiksdata","heat portal","login","usage data"],
    instr:["Log in en controleer of verbruiksdata zichtbaar is."],
-   status:"warn", statusText:"WISSELENDE ERVARINGEN GERAPPORTEERD"},
+   instr_en:["Log in and check whether your usage data is visible."],
+   status:"warn", statusText:"WISSELENDE ERVARINGEN GERAPPORTEERD", statusText_en:"MIXED EXPERIENCES REPORTED"},
 
-  // 13. Lift
-  {cat:"Lift", q:"Lift werkt niet of deur gaat niet open", kw:["lift kapot","lift storing","deur lift"],
+  // Lift / Elevator
+  {cat:"Lift", cat_en:"Elevator",
+   q:"Lift werkt niet of deur gaat niet open",
+   q_en:"Elevator not working or door won't open",
+   kw:["lift kapot","lift storing","deur lift","elevator","lift broken"],
    instr:["Meld dit bij MVGM.","Gebruik ondertussen de andere lift of de trap."],
-   status:"ok", statusText:"BEVESTIGD"},
+   instr_en:["Report it to MVGM.","Use the other elevator or the stairs in the meantime."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
 
-  // 15. Overig
-  {cat:"Overig", q:"Klein defect, bijvoorbeeld een kapotte lamp of apparaat", kw:["kapotte lamp","klein defect","apparaat stuk"],
+  // Overig / Other
+  {cat:"Overig", cat_en:"Other",
+   q:"Klein defect, bijvoorbeeld een kapotte lamp of apparaat",
+   q_en:"Small defect, e.g. a broken light or appliance",
+   kw:["kapotte lamp","klein defect","apparaat stuk","broken light","appliance","defect"],
    instr:["Check eerst of het al gemeld is in de groep.","Meld het anders zelf bij MVGM."],
-   status:"ok", statusText:"BEVESTIGD"},
-  {cat:"Overig", q:"Spullen terughalen uit de berging", kw:["berging","kelder","opslag sleutel"],
+   instr_en:["First check whether it's already been reported in the group.","Otherwise report it to MVGM yourself."],
+   status:"ok", statusText:"BEVESTIGD", statusText_en:"CONFIRMED"},
+  {cat:"Overig", cat_en:"Other",
+   q:"Spullen terughalen uit de berging",
+   q_en:"Retrieving items from the storage room",
+   kw:["berging","kelder","opslag sleutel","storage room","basement","key"],
    instr:["Vraag de sleutel na bij MVGM of de schoonmaakdienst als je zelf geen toegang hebt."],
+   instr_en:["Ask MVGM or the cleaning service for the key if you don't have access yourself."],
    status:"warn", statusText:"AFHANKELIJK VAN SLEUTELBEHEER — ONBEVESTIGD"},
 
-  // 16. Lenen
-  {cat:"Spullen lenen", q:"Iets lenen, bijvoorbeeld boor, statafel of stofzuiger", kw:["lenen","boor","statafel","stofzuiger","spullen lenen"],
+  // Spullen lenen / Borrowing
+  {cat:"Spullen lenen", cat_en:"Borrowing items",
+   q:"Iets lenen, bijvoorbeeld boor, statafel of stofzuiger",
+   q_en:"Borrowing something, e.g. a drill, standing table or vacuum cleaner",
+   kw:["lenen","boor","statafel","stofzuiger","spullen lenen","borrow","drill","vacuum"],
    instr:["Post het item + gewenste tijdsduur in de groep.","Spreek ophalen/teruggeven af met wie reageert."],
-   status:"ok", statusText:"BEVESTIGD PATROON"},
-  {cat:"Spullen lenen", q:"Iets gratis weggeven of verkopen", kw:["weggeven","gratis","verkopen","tweedehands"],
+   instr_en:["Post the item + how long you need it in the group.","Arrange pick-up/return with whoever responds."],
+   status:"ok", statusText:"BEVESTIGD PATROON", statusText_en:"CONFIRMED PATTERN"},
+  {cat:"Spullen lenen", cat_en:"Borrowing items",
+   q:"Iets gratis weggeven of verkopen",
+   q_en:"Giving something away for free or selling it",
+   kw:["weggeven","gratis","verkopen","tweedehands","give away","free","sell","second-hand"],
    instr:["Post een foto + korte beschrijving + prijs (of 'gratis').","Vermeld een deadline, bv. 'als het vanavond niet weg is, gaat het bij het grofvuil'."],
-   status:"ok", statusText:"BEVESTIGD PATROON"},
+   instr_en:["Post a photo + short description + price (or 'free').","Mention a deadline, e.g. 'if it's not gone tonight, it goes out with the bulky waste'."],
+   status:"ok", statusText:"BEVESTIGD PATROON", statusText_en:"CONFIRMED PATTERN"},
 ];
 
+const UI = {
+  nl:{
+    docTitle:"B'Mine — Bewoners Infobalie",
+    title:"B'MINE · BEWONERS INFOBALIE",
+    cats:function(n){ return n + " categorieën"; },
+    idle:"TYP EEN VRAAG OF KIES EEN CATEGORIE",
+    placeholder:"bv. 'lift doet het niet' of 'verwarming te heet'",
+    noMatch:"GEEN MATCH",
+    results:function(n){ return n + " RESULTA" + (n===1 ? "AT" : "TEN"); },
+    emptyQuery:"Geen directe match gevonden. Herformuleer de vraag, of neem contact op met MVGM.",
+    emptyIdle:"Kies een categorie hierboven, of typ een vraag.",
+    footer:"STATUS-CODES: <b>BEVESTIGD</b> = herhaald in de chat · <b>ONOPGELOST</b> = geen antwoord gevonden.<br>Instructies = bewonersconsensus, geen officieel geverifieerd MVGM/VvE-beleid.",
+    mvgmTitle:"MVGM — CONTACTGEGEVENS",
+    mvgmLabels:["Algemeen storingsnummer","Nathalie Verduyn Lunel — Client Manager","Klantcontactcenter Wonen (reparatieticket)","Support Wonen Amsterdam","Huurdersportaal"],
+    mvgmNote:"Let op: MVGM is tussen 12:00–13:30 vaak slecht bereikbaar. Niet-MVGM maar in dezelfde context genoemd: Essent storingsnummer warmte 088 851 1241."
+  },
+  en:{
+    docTitle:"B'Mine — Residents Info Desk",
+    title:"B'MINE · RESIDENTS INFO DESK",
+    cats:function(n){ return n + " categories"; },
+    idle:"TYPE A QUESTION OR PICK A CATEGORY",
+    placeholder:"e.g. 'elevator not working' or 'heating too hot'",
+    noMatch:"NO MATCH",
+    results:function(n){ return n + " RESULT" + (n===1 ? "" : "S"); },
+    emptyQuery:"No direct match found. Rephrase your question, or contact MVGM.",
+    emptyIdle:"Pick a category above, or type a question.",
+    footer:"STATUS CODES: <b>CONFIRMED</b> = repeated in the chat · <b>UNRESOLVED</b> = no answer found.<br>Instructions reflect resident consensus, not officially verified MVGM/VvE policy.",
+    mvgmTitle:"MVGM — CONTACT DETAILS",
+    mvgmLabels:["General fault line","Nathalie Verduyn Lunel — Client Manager","Customer contact centre Housing (repair ticket)","Support Housing Amsterdam","Tenant portal"],
+    mvgmNote:"Note: MVGM is often hard to reach between 12:00–13:30. Not MVGM, but mentioned in the same context: Essent heating fault line 088 851 1241."
+  }
+};
+
+let lang = localStorage.getItem("bmine_lang") || "nl";
 const categories = [...new Set(DATA.map(d => d.cat))];
 let activeCat = null;
 
+function T(item, field){
+  return (lang === "en" && item[field + "_en"]) ? item[field + "_en"] : item[field];
+}
+
+function catLabel(cat){
+  if(lang !== "en") return cat;
+  const item = DATA.find(d => d.cat === cat);
+  return (item && item.cat_en) ? item.cat_en : cat;
+}
+
 function tokenize(s){
   return s.toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .normalize("NFD")
     .replace(/[^a-z0-9\s]/g," ")
     .split(/\s+/).filter(Boolean);
 }
 
 function searchableText(item){
-  return [item.cat, item.q, ...(item.kw||[]), ...(item.instr||[])].join(" ").toLowerCase();
+  return [item.cat, item.cat_en, item.q, item.q_en,
+          ...(item.kw||[]), ...(item.instr||[]), ...(item.instr_en||[])]
+    .filter(Boolean).join(" ").toLowerCase();
 }
 
 function score(item, tokens){
@@ -499,7 +684,7 @@ function renderChips(){
   categories.forEach(cat=>{
     const chip = document.createElement("div");
     chip.className = "chip" + (activeCat===cat ? " active":"");
-    chip.textContent = cat;
+    chip.textContent = catLabel(cat);
     chip.onclick = ()=>{
       activeCat = (activeCat===cat) ? null : cat;
       document.getElementById("q").value = "";
@@ -517,15 +702,16 @@ function statusClass(status){
 function renderCard(item){
   const div = document.createElement("div");
   div.className = "card " + statusClass(item.status);
-  const instrHtml = item.instr.length > 1
-    ? "<ol>" + item.instr.map(i=>`<li>${i}</li>`).join("") + "</ol>"
-    : `<p style="margin:0">${item.instr[0]}</p>`;
+  const instr = T(item, "instr");
+  const instrHtml = instr.length > 1
+    ? "<ol>" + instr.map(i=>`<li>${i}</li>`).join("") + "</ol>"
+    : `<p style="margin:0">${instr[0]}</p>`;
   const showBadge = !/ONBEVESTIGD|TEGENSTRIJDIG|NIET BEVESTIGD|VERMOEDEN|GEEN OFFICIËLE BEVESTIGING|GEEN PERMANENTE FIX BEVESTIGD/.test(item.statusText);
   div.innerHTML = `
-    <div class="card-cat">${item.cat}</div>
-    <p class="card-q">${item.q}</p>
+    <div class="card-cat">${catLabel(item.cat)}</div>
+    <p class="card-q">${T(item, "q")}</p>
     <div class="card-instr">${instrHtml}</div>
-    ${showBadge ? `<div class="status-badge">${item.statusText}</div>` : ""}
+    ${showBadge ? `<div class="status-badge">${T(item, "statusText")}</div>` : ""}
   `;
   return div;
 }
@@ -535,16 +721,16 @@ function updateScreen(query, matchCount){
   const leds = document.getElementById("ledRow");
   leds.innerHTML = "";
   if(!query && !activeCat){
-    screen.innerHTML = "TYP EEN VRAAG OF KIES EEN CATEGORIE<span class='cursor'></span>";
+    screen.innerHTML = UI[lang].idle + "<span class='cursor'></span>";
     for(let i=0;i<3;i++){ const l=document.createElement("div"); l.className="led"; leds.appendChild(l); }
     return;
   }
-  const label = activeCat ? activeCat.toUpperCase() : query.toUpperCase();
+  const label = activeCat ? catLabel(activeCat).toUpperCase() : query.toUpperCase();
   if(matchCount > 0){
-    screen.innerHTML = `${matchCount} RESULTA${matchCount===1?"AT":"TEN"} · "${label}"`;
+    screen.innerHTML = `${UI[lang].results(matchCount)} · "${label}"`;
     for(let i=0;i<3;i++){ const l=document.createElement("div"); l.className="led on"; leds.appendChild(l); }
   } else {
-    screen.innerHTML = `GEEN MATCH · "${label}"`;
+    screen.innerHTML = `${UI[lang].noMatch} · "${label}"`;
     for(let i=0;i<3;i++){ const l=document.createElement("div"); l.className="led"; leds.appendChild(l); }
   }
 }
@@ -574,9 +760,7 @@ function renderResults(){
   if(items.length === 0){
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = query
-      ? "Geen directe match gevonden. Herformuleer de vraag, of neem contact op met MVGM."
-      : "Kies een categorie hierboven, of typ een vraag.";
+    empty.textContent = query ? UI[lang].emptyQuery : UI[lang].emptyIdle;
     resultsEl.appendChild(empty);
     return;
   }
@@ -584,14 +768,39 @@ function renderResults(){
   items.forEach(item => resultsEl.appendChild(renderCard(item)));
 }
 
+function applyLang(){
+  const ui = UI[lang];
+  document.documentElement.lang = lang;
+  document.title = ui.docTitle;
+  document.getElementById("pageTitle").textContent = ui.title;
+  document.getElementById("catCount").textContent = ui.cats(categories.length);
+  document.getElementById("q").placeholder = ui.placeholder;
+  document.getElementById("footerNote").innerHTML = ui.footer;
+  document.getElementById("mvgmTitle").textContent = ui.mvgmTitle;
+  document.getElementById("mvgmNote").textContent = ui.mvgmNote;
+  const labelCells = document.querySelectorAll("#mvgmTable tr td:first-child");
+  labelCells.forEach((td, i)=>{ if(ui.mvgmLabels[i]) td.textContent = ui.mvgmLabels[i]; });
+  document.getElementById("langNl").classList.toggle("active", lang === "nl");
+  document.getElementById("langEn").classList.toggle("active", lang === "en");
+  renderChips();
+  renderResults();
+}
+
+function setLang(l){
+  lang = l;
+  localStorage.setItem("bmine_lang", l);
+  applyLang();
+}
+
+document.getElementById("langNl").addEventListener("click", ()=> setLang("nl"));
+document.getElementById("langEn").addEventListener("click", ()=> setLang("en"));
+
 document.getElementById("q").addEventListener("input", ()=>{
   if(document.getElementById("q").value.trim()){ activeCat = null; renderChips(); }
   renderResults();
 });
 
-document.getElementById("catCount").textContent = categories.length + " categorieën";
-renderChips();
-renderResults();
+applyLang();
 </script>
 </body>
 </html>
