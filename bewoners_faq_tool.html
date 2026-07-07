@@ -300,7 +300,7 @@
   <div class="results" id="results"></div>
 
   <div class="footer-note">
-    STATUS-CODES: <b>BEVESTIGD</b> = herhaald in de chat · <b>ONBEVESTIGD/VERMOEDEN</b> = niet officieel bevestigd · <b>TEGENSTRIJDIG</b> = tegenstrijdige info gevonden · <b>ONOPGELOST</b> = geen antwoord gevonden.<br>
+    STATUS-CODES: <b>BEVESTIGD</b> = herhaald in de chat · <b>ONOPGELOST</b> = geen antwoord gevonden.<br>
     Instructies = bewonersconsensus, geen officieel geverifieerd MVGM/VvE-beleid.
   </div>
 
@@ -525,11 +525,12 @@ function renderCard(item){
   const instrHtml = item.instr.length > 1
     ? "<ol>" + item.instr.map(i=>`<li>${i}</li>`).join("") + "</ol>"
     : `<p style="margin:0">${item.instr[0]}</p>`;
+  const showBadge = !/ONBEVESTIGD|TEGENSTRIJDIG/.test(item.statusText);
   div.innerHTML = `
     <div class="card-cat">${item.cat}</div>
     <p class="card-q">${item.q}</p>
     <div class="card-instr">${instrHtml}</div>
-    <div class="status-badge">${item.statusText}</div>
+    ${showBadge ? `<div class="status-badge">${item.statusText}</div>` : ""}
   `;
   return div;
 }
